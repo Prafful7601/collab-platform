@@ -33,28 +33,39 @@ public class EditSocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) {
+    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
 
         String docId = getDocumentId(session);
 
+        // Join document session
         DocumentSessionManager.joinDocument(docId, session);
+
+        // Fetch current document from Redis
+        String content = documentStateService.getDocument(docId);
+
+        if (content == null) {
+            content = "";
+        }
+
+        // Send latest document to the newly connected user
+        session.sendMessage(new TextMessage(content));
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
 
-        // 1. Parse operation from client
+        // 1. Parse operation
         EditOperation operation =
                 objectMapper.readValue(message.getPayload(), EditOperation.class);
 
         String docId = operation.getDocumentId();
 
-        // 2. Publish edit event to Kafka
+        // 2. Publish to Kafka
         editEventProducer.publishEdit(
                 objectMapper.writeValueAsString(operation)
         );
 
-        // 3. Transform operation using history (Operational Transform)
+        // 3. Transform using OT
         List<EditOperation> history =
                 OperationHistory.getHistory(docId);
 
@@ -62,14 +73,14 @@ public class EditSocketHandler extends TextWebSocketHandler {
             operation = OperationTransformer.transform(operation, prev);
         }
 
-        // 4. Fetch current document state from Redis
+        // 4. Get document from Redis
         String content = documentStateService.getDocument(docId);
 
         if (content == null) {
             content = "";
         }
 
-        // 5. APPLY INSERT
+        // 5. INSERT
         if ("insert".equals(operation.getType())) {
 
             int pos = operation.getPosition();
@@ -83,7 +94,7 @@ public class EditSocketHandler extends TextWebSocketHandler {
                             + content.substring(pos);
         }
 
-        // 6. APPLY DELETE
+        // 6. DELETE
         if ("delete".equals(operation.getType())) {
 
             int pos = operation.getPosition();
@@ -99,21 +110,19 @@ public class EditSocketHandler extends TextWebSocketHandler {
             }
         }
 
-        // 7. Save updated document to Redis
+        // 7. Save to Redis
         documentStateService.saveDocument(docId, content);
 
-        // 8. Save operation in history
+        // 8. Save history
         OperationHistory.addOperation(docId, operation);
 
-        // 9. Broadcast updated document to all users editing the same document
+        // 9. Broadcast updated document
         Set<WebSocketSession> sessions =
                 DocumentSessionManager.getSessions(docId);
 
-        String response =
-                objectMapper.writeValueAsString(content);
+        String response = objectMapper.writeValueAsString(content);
 
         for (WebSocketSession s : sessions) {
-
             if (s.isOpen()) {
                 s.sendMessage(new TextMessage(response));
             }
