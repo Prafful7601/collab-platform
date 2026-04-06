@@ -1,0 +1,29 @@
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node.js dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build artifacts
+target/
+*.jar
+*.war
+*.class
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp

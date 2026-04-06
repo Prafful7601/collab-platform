@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collab Docs - Real-time Collaborative Editor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #202124;
+            line-height: 1.5;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid #dadce0;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(60, 64, 67, 0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 20px;
+            font-weight: 500;
+            color: #1a73e8;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(45deg, #1a73e8, #4285f4);
+            border-radius: 6px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar-button {
+            padding: 8px 12px;
+            border: none;
+            background: none;
+            border-radius: 4px;
+            color: #5f6368;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+            min-width: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toolbar-button:hover {
+            background-color: #f1f3f4;
+            color: #202124;
+        }
+
+        .toolbar-button:active {
+            background-color: #e8eaed;
+            transform: scale(0.95);
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #5f6368;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #34a853;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .document {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(60, 64, 67, 0.08), 0 1px 6px rgba(60, 64, 67, 0.04);
+            overflow: hidden;
+            margin-top: 24px;
+        }
+
+        .document-header {
+            padding: 24px 32px 16px;
+            border-bottom: 1px solid #dadce0;
+        }
+
+        .document-title {
+            font-size: 24px;
+            font-weight: 400;
+            color: #202124;
+            border: none;
+            outline: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        .document-title::placeholder {
+            color: #9aa0a6;
+        }
+
+        .document-content {
+            padding: 32px;
+            min-height: 600px;
+        }
+
+        .editor {
+            width: 100%;
+            min-height: 500px;
+            border: none;
+            outline: none;
+            font-family: 'Google Sans', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #202124;
+            padding: 0;
+            background: transparent;
+        }
+
+        .editor:focus {
+            outline: none;
+        }
+
+        .editor:empty::before {
+            content: attr(placeholder);
+            color: #9aa0a6;
+            font-style: italic;
+            pointer-events: none;
+        }
+
+        .editor b, .editor strong {
+            font-weight: bold;
+        }
+
+        .editor i, .editor em {
+            font-style: italic;
+        }
+
+        .editor u {
+            text-decoration: underline;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 16px;
+            color: #9aa0a6;
+            font-size: 12px;
+        }
+
+        .collaborators {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: 16px;
+        }
+
+        .collaborator-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #4285f4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .save-indicator {
+            font-size: 12px;
+            color: #5f6368;
+            margin-left: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .header {
+                padding: 8px 16px;
+            }
+
+            .document-content {
+                padding: 16px;
+            }
+
+            .logo {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">C</div>
+            Collab Docs
+        </div>
+
+        <div class="toolbar">
+            <button class="toolbar-button" title="Bold">B</button>
+            <button class="toolbar-button" title="Italic">I</button>
+            <button class="toolbar-button" title="Underline">U</button>
+            <span style="margin: 0 8px; color: #dadce0;">|</span>
+            <button class="toolbar-button" title="Undo">↶</button>
+            <button class="toolbar-button" title="Redo">↷</button>
+        </div>
+
+        <div class="status">
+            <div class="status-dot"></div>
+            <span>All changes saved</span>
+            <div class="collaborators">
+                <div class="collaborator-avatar" title="You">Y</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="document">
+            <div class="document-header">
+                <input type="text" class="document-title" placeholder="Untitled document" value="Collaborative Document">
+            </div>
+
+            <div class="document-content">
+                <div id="editor" class="editor" contenteditable="true" placeholder="Start writing your collaborative document here..."></div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        Real-time collaborative editor • Built with WebSocket & Spring Boot • Created by Prafful Gupta
+    </footer>
+
+    <script>
+        const docId = "doc1";
+        const socket = new WebSocket("ws://localhost:8080/collab?docId=" + docId);
+
+        const editor = document.getElementById("editor");
+        const statusText = document.querySelector('.status span');
+
+        let ignoreChanges = false;
+        let lastSaved = Date.now();
+        let undoStack = [];
+        let redoStack = [];
+        let lastContent = "";
+        let isTyping = false;
+        let typingTimer;
+
+        // Enhanced WebSocket with reconnection
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+
+        function connectWebSocket() {
+            socket.onopen = function() {
+                console.log('Connected to collaborative editor');
+                updateStatus('Connected');
+                reconnectAttempts = 0;
+            };
+
+            socket.onmessage = function(event) {
+                ignoreChanges = true;
+                const newContent = event.data;
+                saveToHistory();
+                editor.innerHTML = newContent;
+                lastContent = newContent;
+                ignoreChanges = false;
+                updateStatus('All changes saved');
+                lastSaved = Date.now();
+            };
+
+            socket.onclose = function() {
+                updateStatus('Disconnected');
+                attemptReconnect();
+            };
+
+            socket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                updateStatus('Connection error');
+            };
+        }
+
+        function attemptReconnect() {
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                updateStatus(`Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})`);
+
+                setTimeout(() => {
+                    const newSocket = new WebSocket("ws://localhost:8080/collab?docId=" + docId);
+                    Object.assign(socket, newSocket);
+                    connectWebSocket();
+                }, 2000 * reconnectAttempts);
+            } else {
+                updateStatus('Failed to reconnect');
+            }
+        }
+
+        connectWebSocket();
+        // Toolbar button event listeners with visual feedback
+        document.querySelectorAll('.toolbar-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const action = this.title.toLowerCase();
+                this.classList.add('active');
+
+                setTimeout(() => this.classList.remove('active'), 150);
+
+                switch(action) {
+                    case 'bold':
+                        document.execCommand('bold', false, null);
+                        break;
+                    case 'italic':
+                        document.execCommand('italic', false, null);
+                        break;
+                    case 'underline':
+                        document.execCommand('underline', false, null);
+                        break;
+                    case 'undo':
+                        document.execCommand('undo', false, null);
+                        break;
+                    case 'redo':
+                        document.execCommand('redo', false, null);
+                        break;
+                }
+
+                editor.focus();
+                triggerInput();
+            });
+        });
+
+        // Enhanced keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                let handled = true;
+
+                switch(e.key.toLowerCase()) {
+                    case 'b':
+                        document.execCommand('bold', false, null);
+                        break;
+                    case 'i':
+                        document.execCommand('italic', false, null);
+                        break;
+                    case 'u':
+                        document.execCommand('underline', false, null);
+                        break;
+                    case 'z':
+                        if (e.shiftKey) {
+                            document.execCommand('redo', false, null);
+                        } else {
+                            document.execCommand('undo', false, null);
+                        }
+                        break;
+                    case 'y':
+                        document.execCommand('redo', false, null);
+                        break;
+                    case 'a':
+                        document.execCommand('selectAll', false, null);
+                        break;
+                    default:
+                        handled = false;
+                }
+
+                if (handled) {
+                    e.preventDefault();
+                    editor.focus();
+                    triggerInput();
+                }
+            }
+        });
+
+        // Real-time collaboration with debouncing
+        editor.addEventListener("input", function(e) {
+            if (ignoreChanges) return;
+
+            clearTimeout(typingTimer);
+            isTyping = true;
+            updateStatus('Typing...');
+
+            typingTimer = setTimeout(() => {
+                isTyping = false;
+                sendUpdate();
+            }, 300); // Debounce for 300ms
+        });
+
+        // Send updates immediately on keyup for better responsiveness
+        editor.addEventListener("keyup", function(e) {
+            if (ignoreChanges) return;
+
+            // Send immediately for certain keys
+            if (['Enter', ' ', '.', ',', '!', '?'].includes(e.key)) {
+                clearTimeout(typingTimer);
+                sendUpdate();
+            }
+        });
+
+        function sendUpdate() {
+            updateStatus('Saving...');
+
+            const operation = {
+                type: "replace",
+                text: editor.innerHTML,
+                documentId: docId,
+                timestamp: Date.now()
+            };
+
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(operation));
+            }
+
+            setTimeout(() => {
+                if (!isTyping) {
+                    updateStatus('All changes saved');
+                    lastSaved = Date.now();
+                }
+            }, 500);
+        }
+
+        function triggerInput() {
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        function saveToHistory() {
+            if (lastContent !== editor.value) {
+                undoStack.push(lastContent);
+                redoStack = []; // Clear redo stack when new changes are made
+                lastContent = editor.value;
+
+                // Limit undo stack size
+                if (undoStack.length > 50) {
+                    undoStack.shift();
+                }
+            }
+        }
+
+        socket.onopen = function() {
+            console.log('Connected to collaborative editor');
+            updateStatus('Connected');
+        };
+
+        socket.onmessage = function(event) {
+            ignoreChanges = true;
+            const newContent = event.data;
+            saveToHistory(); // Save current state before receiving new content
+            editor.value = newContent;
+            lastContent = newContent;
+            ignoreChanges = false;
+            updateStatus('All changes saved');
+            lastSaved = Date.now();
+        };
+
+        socket.onclose = function() {
+            updateStatus('Disconnected');
+        };
+
+        socket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+            updateStatus('Connection error');
+        };
+
+        editor.addEventListener("input", function(e) {
+            if (ignoreChanges) return;
+
+            saveToHistory(); // Save state for undo functionality
+            updateStatus('Saving...');
+
+            const operation = {
+                type: "replace",
+                text: editor.value,
+                documentId: docId
+            };
+
+            socket.send(JSON.stringify(operation));
+
+            // Simulate auto-save indicator
+            setTimeout(() => {
+                if (Date.now() - lastSaved > 1000) {
+                    updateStatus('All changes saved');
+                    lastSaved = Date.now();
+                }
+            }, 500);
+        });
+
+        function updateStatus(text) {
+            statusText.textContent = text;
+        }
+
+        // Auto-focus on editor
+        window.addEventListener('load', () => {
+            editor.focus();
+        });
+    </script>
+
+    <!-- Created by Prafful Gupta -->
+</html>
