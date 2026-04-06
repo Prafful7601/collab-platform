@@ -68,11 +68,22 @@
             color: #5f6368;
             font-size: 14px;
             cursor: pointer;
-            transition: background-color 0.2s;
+            transition: all 0.2s;
+            font-weight: 500;
+            min-width: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .toolbar-button:hover {
             background-color: #f1f3f4;
+            color: #202124;
+        }
+
+        .toolbar-button:active {
+            background-color: #e8eaed;
+            transform: scale(0.95);
         }
 
         .status {
@@ -261,6 +272,116 @@
 
         let ignoreChanges = false;
         let lastSaved = Date.now();
+        let undoStack = [];
+        let redoStack = [];
+        let lastContent = "";
+
+        // Toolbar button event listeners
+        document.querySelectorAll('.toolbar-button').forEach(button => {
+            button.addEventListener('click', function() {
+                const action = this.title.toLowerCase();
+                switch(action) {
+                    case 'bold':
+                        applyFormatting('**', '**');
+                        break;
+                    case 'italic':
+                        applyFormatting('*', '*');
+                        break;
+                    case 'underline':
+                        applyFormatting('__', '__');
+                        break;
+                    case 'undo':
+                        undo();
+                        break;
+                    case 'redo':
+                        redo();
+                        break;
+                }
+            });
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey || e.metaKey) {
+                switch(e.key.toLowerCase()) {
+                    case 'b':
+                        e.preventDefault();
+                        applyFormatting('**', '**');
+                        break;
+                    case 'i':
+                        e.preventDefault();
+                        applyFormatting('*', '*');
+                        break;
+                    case 'u':
+                        e.preventDefault();
+                        applyFormatting('__', '__');
+                        break;
+                    case 'z':
+                        if (e.shiftKey) {
+                            e.preventDefault();
+                            redo();
+                        } else {
+                            e.preventDefault();
+                            undo();
+                        }
+                        break;
+                    case 'y':
+                        e.preventDefault();
+                        redo();
+                        break;
+                }
+            }
+        });
+
+        function applyFormatting(prefix, suffix) {
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const selectedText = editor.value.substring(start, end);
+            const beforeText = editor.value.substring(0, start);
+            const afterText = editor.value.substring(end);
+
+            const newText = beforeText + prefix + selectedText + suffix + afterText;
+            editor.value = newText;
+
+            // Trigger input event to send changes
+            editor.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // Restore cursor position
+            const newCursorPos = start + prefix.length + selectedText.length + suffix.length;
+            editor.setSelectionRange(newCursorPos, newCursorPos);
+            editor.focus();
+        }
+
+        function undo() {
+            if (undoStack.length > 0) {
+                redoStack.push(editor.value);
+                const previousContent = undoStack.pop();
+                editor.value = previousContent;
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+
+        function redo() {
+            if (redoStack.length > 0) {
+                undoStack.push(editor.value);
+                const nextContent = redoStack.pop();
+                editor.value = nextContent;
+                editor.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+
+        function saveToHistory() {
+            if (lastContent !== editor.value) {
+                undoStack.push(lastContent);
+                redoStack = []; // Clear redo stack when new changes are made
+                lastContent = editor.value;
+
+                // Limit undo stack size
+                if (undoStack.length > 50) {
+                    undoStack.shift();
+                }
+            }
+        }
 
         socket.onopen = function() {
             console.log('Connected to collaborative editor');
@@ -269,7 +390,10 @@
 
         socket.onmessage = function(event) {
             ignoreChanges = true;
-            editor.value = event.data;
+            const newContent = event.data;
+            saveToHistory(); // Save current state before receiving new content
+            editor.value = newContent;
+            lastContent = newContent;
             ignoreChanges = false;
             updateStatus('All changes saved');
             lastSaved = Date.now();
@@ -287,6 +411,7 @@
         editor.addEventListener("input", function(e) {
             if (ignoreChanges) return;
 
+            saveToHistory(); // Save state for undo functionality
             updateStatus('Saving...');
 
             const operation = {
