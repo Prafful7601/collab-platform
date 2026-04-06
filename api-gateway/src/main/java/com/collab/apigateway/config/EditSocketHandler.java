@@ -80,7 +80,12 @@ public class EditSocketHandler extends TextWebSocketHandler {
             content = "";
         }
 
-        // 5. INSERT
+        // 5. REPLACE - full document replacement (from UI)
+        if ("replace".equals(operation.getType())) {
+            content = operation.getText();
+        }
+
+        // 6. INSERT
         if ("insert".equals(operation.getType())) {
 
             int pos = operation.getPosition();
@@ -94,7 +99,7 @@ public class EditSocketHandler extends TextWebSocketHandler {
                             + content.substring(pos);
         }
 
-        // 6. DELETE
+        // 7. DELETE
         if ("delete".equals(operation.getType())) {
 
             int pos = operation.getPosition();
@@ -110,21 +115,20 @@ public class EditSocketHandler extends TextWebSocketHandler {
             }
         }
 
-        // 7. Save to Redis
+        // 8. Save to Redis
         documentStateService.saveDocument(docId, content);
 
-        // 8. Save history
+        // 9. Save history
         OperationHistory.addOperation(docId, operation);
 
-        // 9. Broadcast updated document
+        // 10. Broadcast updated document
         Set<WebSocketSession> sessions =
                 DocumentSessionManager.getSessions(docId);
 
-        String response = objectMapper.writeValueAsString(content);
-
+        // Send plain text content (not JSON)
         for (WebSocketSession s : sessions) {
             if (s.isOpen()) {
-                s.sendMessage(new TextMessage(response));
+                s.sendMessage(new TextMessage(content));
             }
         }
     }

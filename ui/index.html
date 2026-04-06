@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Collab Editor</title>
+<style>
+
+body {
+    font-family: Arial;
+    padding: 40px;
+}
+
+textarea {
+    width: 800px;
+    height: 400px;
+    font-size: 16px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h2>Collaborative Editor</h2>
+
+<textarea id="editor"></textarea>
+
+<script>
+
+const docId = "doc1";
+const socket = new WebSocket("ws://localhost:8080/collab?docId=" + docId);
+
+const editor = document.getElementById("editor");
+
+let ignoreChanges = false;
+
+socket.onmessage = function(event) {
+    ignoreChanges = true;
+    editor.value = event.data;
+    ignoreChanges = false;
+};
+
+editor.addEventListener("input", function(e) {
+
+    if (ignoreChanges) return;
+
+    const operation = {
+        type: "replace",
+        text: editor.value,
+        documentId: docId
+    };
+
+    socket.send(JSON.stringify(operation));
+});
+
+</script>
+
+</body>
+</html>
