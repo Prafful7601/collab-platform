@@ -1,15 +1,23 @@
 package com.collab.apigateway.config;
 
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.socket.config.annotation.*;
+import org.springframework.web.socket.config.annotation.EnableWebSocket;
+import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
+import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 
 @Configuration
 @EnableWebSocket
 public class WebSocketConfig implements WebSocketConfigurer {
 
+    private final EditSocketHandler editSocketHandler;
+
+    public WebSocketConfig(EditSocketHandler editSocketHandler) {
+        this.editSocketHandler = editSocketHandler;
+    }
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(new EditSocketHandler(), "/collab")
+        registry.addHandler(editSocketHandler, "/collab")
                 .setAllowedOrigins("*");
     }
 }
