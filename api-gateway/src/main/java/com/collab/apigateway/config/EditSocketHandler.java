@@ -14,8 +14,10 @@ import com.collab.apigateway.engine.OperationHistory;
 import com.collab.apigateway.engine.OperationTransformer;
 import com.collab.apigateway.event.EditEventProducer;
 import com.collab.apigateway.model.EditOperation;
-import com.collab.apigateway.service.DocumentStateService;
 import com.collab.apigateway.security.HtmlSanitizer;
+import com.collab.apigateway.service.DocumentStateService;
+import com.collab.apigateway.session.DocumentSessionManager;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Component
 public class EditSocketHandler extends TextWebSocketHandler {
