@@ -1,58 +1,318 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Collab Editor</title>
-<style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Collab Docs - Real-time Collaborative Editor</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-body {
-    font-family: Arial;
-    padding: 40px;
-}
+        body {
+            font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #202124;
+            line-height: 1.5;
+        }
 
-textarea {
-    width: 800px;
-    height: 400px;
-    font-size: 16px;
-}
+        .header {
+            background: white;
+            border-bottom: 1px solid #dadce0;
+            padding: 12px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(60, 64, 67, 0.08);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
 
-</style>
+        .logo {
+            display: flex;
+            align-items: center;
+            font-size: 20px;
+            font-weight: 500;
+            color: #1a73e8;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(45deg, #1a73e8, #4285f4);
+            border-radius: 6px;
+            margin-right: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toolbar-button {
+            padding: 8px 12px;
+            border: none;
+            background: none;
+            border-radius: 4px;
+            color: #5f6368;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .toolbar-button:hover {
+            background-color: #f1f3f4;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #5f6368;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #34a853;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .document {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(60, 64, 67, 0.08), 0 1px 6px rgba(60, 64, 67, 0.04);
+            overflow: hidden;
+            margin-top: 24px;
+        }
+
+        .document-header {
+            padding: 24px 32px 16px;
+            border-bottom: 1px solid #dadce0;
+        }
+
+        .document-title {
+            font-size: 24px;
+            font-weight: 400;
+            color: #202124;
+            border: none;
+            outline: none;
+            width: 100%;
+            background: transparent;
+        }
+
+        .document-title::placeholder {
+            color: #9aa0a6;
+        }
+
+        .document-content {
+            padding: 32px;
+            min-height: 600px;
+        }
+
+        .editor {
+            width: 100%;
+            min-height: 500px;
+            border: none;
+            outline: none;
+            font-family: 'Google Sans', Arial, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #202124;
+            resize: none;
+            background: transparent;
+        }
+
+        .editor:focus {
+            outline: none;
+        }
+
+        .editor::placeholder {
+            color: #9aa0a6;
+            font-style: italic;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 16px;
+            color: #9aa0a6;
+            font-size: 12px;
+        }
+
+        .collaborators {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-left: 16px;
+        }
+
+        .collaborator-avatar {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #4285f4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+            border: 2px solid white;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .save-indicator {
+            font-size: 12px;
+            color: #5f6368;
+            margin-left: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+
+            .header {
+                padding: 8px 16px;
+            }
+
+            .document-content {
+                padding: 16px;
+            }
+
+            .logo {
+                font-size: 18px;
+            }
+        }
+    </style>
 </head>
-
 <body>
+    <header class="header">
+        <div class="logo">
+            <div class="logo-icon">C</div>
+            Collab Docs
+        </div>
 
-<h2>Collaborative Editor</h2>
+        <div class="toolbar">
+            <button class="toolbar-button" title="Bold">B</button>
+            <button class="toolbar-button" title="Italic">I</button>
+            <button class="toolbar-button" title="Underline">U</button>
+            <span style="margin: 0 8px; color: #dadce0;">|</span>
+            <button class="toolbar-button" title="Undo">↶</button>
+            <button class="toolbar-button" title="Redo">↷</button>
+        </div>
 
-<textarea id="editor"></textarea>
+        <div class="status">
+            <div class="status-dot"></div>
+            <span>All changes saved</span>
+            <div class="collaborators">
+                <div class="collaborator-avatar" title="You">Y</div>
+            </div>
+        </div>
+    </header>
 
-<script>
+    <div class="container">
+        <div class="document">
+            <div class="document-header">
+                <input type="text" class="document-title" placeholder="Untitled document" value="Collaborative Document">
+            </div>
 
-const docId = "doc1";
-const socket = new WebSocket("ws://localhost:8080/collab?docId=" + docId);
+            <div class="document-content">
+                <textarea id="editor" class="editor" placeholder="Start writing your collaborative document here..."></textarea>
+            </div>
+        </div>
+    </div>
 
-const editor = document.getElementById("editor");
+    <footer class="footer">
+        Real-time collaborative editor • Built with WebSocket & Spring Boot
+    </footer>
 
-let ignoreChanges = false;
+    <script>
+        const docId = "doc1";
+        const socket = new WebSocket("ws://localhost:8080/collab?docId=" + docId);
 
-socket.onmessage = function(event) {
-    ignoreChanges = true;
-    editor.value = event.data;
-    ignoreChanges = false;
-};
+        const editor = document.getElementById("editor");
+        const statusText = document.querySelector('.status span');
 
-editor.addEventListener("input", function(e) {
+        let ignoreChanges = false;
+        let lastSaved = Date.now();
 
-    if (ignoreChanges) return;
+        socket.onopen = function() {
+            console.log('Connected to collaborative editor');
+            updateStatus('Connected');
+        };
 
-    const operation = {
-        type: "replace",
-        text: editor.value,
-        documentId: docId
-    };
+        socket.onmessage = function(event) {
+            ignoreChanges = true;
+            editor.value = event.data;
+            ignoreChanges = false;
+            updateStatus('All changes saved');
+            lastSaved = Date.now();
+        };
 
-    socket.send(JSON.stringify(operation));
-});
+        socket.onclose = function() {
+            updateStatus('Disconnected');
+        };
 
-</script>
+        socket.onerror = function(error) {
+            console.error('WebSocket error:', error);
+            updateStatus('Connection error');
+        };
 
-</body>
+        editor.addEventListener("input", function(e) {
+            if (ignoreChanges) return;
+
+            updateStatus('Saving...');
+
+            const operation = {
+                type: "replace",
+                text: editor.value,
+                documentId: docId
+            };
+
+            socket.send(JSON.stringify(operation));
+
+            // Simulate auto-save indicator
+            setTimeout(() => {
+                if (Date.now() - lastSaved > 1000) {
+                    updateStatus('All changes saved');
+                    lastSaved = Date.now();
+                }
+            }, 500);
+        });
+
+        function updateStatus(text) {
+            statusText.textContent = text;
+        }
+
+        // Auto-focus on editor
+        window.addEventListener('load', () => {
+            editor.focus();
+        });
+    </script>
 </html>
