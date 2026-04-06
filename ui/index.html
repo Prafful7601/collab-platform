@@ -155,7 +155,7 @@
             font-size: 14px;
             line-height: 1.6;
             color: #202124;
-            resize: none;
+            padding: 0;
             background: transparent;
         }
 
@@ -163,9 +163,23 @@
             outline: none;
         }
 
-        .editor::placeholder {
+        .editor:empty::before {
+            content: attr(placeholder);
             color: #9aa0a6;
             font-style: italic;
+            pointer-events: none;
+        }
+
+        .editor b, .editor strong {
+            font-weight: bold;
+        }
+
+        .editor i, .editor em {
+            font-style: italic;
+        }
+
+        .editor u {
+            text-decoration: underline;
         }
 
         .footer {
@@ -254,7 +268,7 @@
             </div>
 
             <div class="document-content">
-                <textarea id="editor" class="editor" placeholder="Start writing your collaborative document here..."></textarea>
+                <div id="editor" class="editor" contenteditable="true" placeholder="Start writing your collaborative document here..."></div>
             </div>
         </div>
     </div>
@@ -275,99 +289,178 @@
         let undoStack = [];
         let redoStack = [];
         let lastContent = "";
+        let isTyping = false;
+        let typingTimer;
 
-        // Toolbar button event listeners
+        // Enhanced WebSocket with reconnection
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 5;
+
+        function connectWebSocket() {
+            socket.onopen = function() {
+                console.log('Connected to collaborative editor');
+                updateStatus('Connected');
+                reconnectAttempts = 0;
+            };
+
+            socket.onmessage = function(event) {
+                ignoreChanges = true;
+                const newContent = event.data;
+                saveToHistory();
+                editor.innerHTML = newContent;
+                lastContent = newContent;
+                ignoreChanges = false;
+                updateStatus('All changes saved');
+                lastSaved = Date.now();
+            };
+
+            socket.onclose = function() {
+                updateStatus('Disconnected');
+                attemptReconnect();
+            };
+
+            socket.onerror = function(error) {
+                console.error('WebSocket error:', error);
+                updateStatus('Connection error');
+            };
+        }
+
+        function attemptReconnect() {
+            if (reconnectAttempts < maxReconnectAttempts) {
+                reconnectAttempts++;
+                updateStatus(`Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})`);
+
+                setTimeout(() => {
+                    const newSocket = new WebSocket("ws://localhost:8080/collab?docId=" + docId);
+                    Object.assign(socket, newSocket);
+                    connectWebSocket();
+                }, 2000 * reconnectAttempts);
+            } else {
+                updateStatus('Failed to reconnect');
+            }
+        }
+
+        connectWebSocket();
+        // Toolbar button event listeners with visual feedback
         document.querySelectorAll('.toolbar-button').forEach(button => {
             button.addEventListener('click', function() {
                 const action = this.title.toLowerCase();
+                this.classList.add('active');
+
+                setTimeout(() => this.classList.remove('active'), 150);
+
                 switch(action) {
                     case 'bold':
-                        applyFormatting('**', '**');
+                        document.execCommand('bold', false, null);
                         break;
                     case 'italic':
-                        applyFormatting('*', '*');
+                        document.execCommand('italic', false, null);
                         break;
                     case 'underline':
-                        applyFormatting('__', '__');
+                        document.execCommand('underline', false, null);
                         break;
                     case 'undo':
-                        undo();
+                        document.execCommand('undo', false, null);
                         break;
                     case 'redo':
-                        redo();
+                        document.execCommand('redo', false, null);
                         break;
                 }
+
+                editor.focus();
+                triggerInput();
             });
         });
 
-        // Keyboard shortcuts
+        // Enhanced keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey || e.metaKey) {
+                let handled = true;
+
                 switch(e.key.toLowerCase()) {
                     case 'b':
-                        e.preventDefault();
-                        applyFormatting('**', '**');
+                        document.execCommand('bold', false, null);
                         break;
                     case 'i':
-                        e.preventDefault();
-                        applyFormatting('*', '*');
+                        document.execCommand('italic', false, null);
                         break;
                     case 'u':
-                        e.preventDefault();
-                        applyFormatting('__', '__');
+                        document.execCommand('underline', false, null);
                         break;
                     case 'z':
                         if (e.shiftKey) {
-                            e.preventDefault();
-                            redo();
+                            document.execCommand('redo', false, null);
                         } else {
-                            e.preventDefault();
-                            undo();
+                            document.execCommand('undo', false, null);
                         }
                         break;
                     case 'y':
-                        e.preventDefault();
-                        redo();
+                        document.execCommand('redo', false, null);
                         break;
+                    case 'a':
+                        document.execCommand('selectAll', false, null);
+                        break;
+                    default:
+                        handled = false;
+                }
+
+                if (handled) {
+                    e.preventDefault();
+                    editor.focus();
+                    triggerInput();
                 }
             }
         });
 
-        function applyFormatting(prefix, suffix) {
-            const start = editor.selectionStart;
-            const end = editor.selectionEnd;
-            const selectedText = editor.value.substring(start, end);
-            const beforeText = editor.value.substring(0, start);
-            const afterText = editor.value.substring(end);
+        // Real-time collaboration with debouncing
+        editor.addEventListener("input", function(e) {
+            if (ignoreChanges) return;
 
-            const newText = beforeText + prefix + selectedText + suffix + afterText;
-            editor.value = newText;
+            clearTimeout(typingTimer);
+            isTyping = true;
+            updateStatus('Typing...');
 
-            // Trigger input event to send changes
+            typingTimer = setTimeout(() => {
+                isTyping = false;
+                sendUpdate();
+            }, 300); // Debounce for 300ms
+        });
+
+        // Send updates immediately on keyup for better responsiveness
+        editor.addEventListener("keyup", function(e) {
+            if (ignoreChanges) return;
+
+            // Send immediately for certain keys
+            if (['Enter', ' ', '.', ',', '!', '?'].includes(e.key)) {
+                clearTimeout(typingTimer);
+                sendUpdate();
+            }
+        });
+
+        function sendUpdate() {
+            updateStatus('Saving...');
+
+            const operation = {
+                type: "replace",
+                text: editor.innerHTML,
+                documentId: docId,
+                timestamp: Date.now()
+            };
+
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(operation));
+            }
+
+            setTimeout(() => {
+                if (!isTyping) {
+                    updateStatus('All changes saved');
+                    lastSaved = Date.now();
+                }
+            }, 500);
+        }
+
+        function triggerInput() {
             editor.dispatchEvent(new Event('input', { bubbles: true }));
-
-            // Restore cursor position
-            const newCursorPos = start + prefix.length + selectedText.length + suffix.length;
-            editor.setSelectionRange(newCursorPos, newCursorPos);
-            editor.focus();
-        }
-
-        function undo() {
-            if (undoStack.length > 0) {
-                redoStack.push(editor.value);
-                const previousContent = undoStack.pop();
-                editor.value = previousContent;
-                editor.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-        }
-
-        function redo() {
-            if (redoStack.length > 0) {
-                undoStack.push(editor.value);
-                const nextContent = redoStack.pop();
-                editor.value = nextContent;
-                editor.dispatchEvent(new Event('input', { bubbles: true }));
-            }
         }
 
         function saveToHistory() {
