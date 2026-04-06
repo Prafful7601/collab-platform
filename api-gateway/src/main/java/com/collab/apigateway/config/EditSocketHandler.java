@@ -29,53 +29,63 @@ public class EditSocketHandler extends TextWebSocketHandler {
         DocumentSessionManager.joinDocument(docId, session);
     }
 
-    @Override
-    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+@Override
+protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
 
-        // 1. Parse incoming edit
-        EditOperation operation =
-                objectMapper.readValue(message.getPayload(), EditOperation.class);
+    EditOperation operation =
+            objectMapper.readValue(message.getPayload(), EditOperation.class);
 
-        String docId = operation.getDocumentId();
+    String docId = operation.getDocumentId();
 
-        // 2. Get current document from Redis
-        String content = documentStateService.getDocument(docId);
+    String content = documentStateService.getDocument(docId);
 
-        if (content == null) {
-            content = "";
-        }
+    if (content == null) {
+        content = "";
+    }
 
-        // 3. Apply operation
-        if ("insert".equals(operation.getType())) {
+    // INSERT
+    if ("insert".equals(operation.getType())) {
 
-            int pos = operation.getPosition();
+        int pos = operation.getPosition();
 
-            if (pos < 0) pos = 0;
-            if (pos > content.length()) pos = content.length();
+        if (pos < 0) pos = 0;
+        if (pos > content.length()) pos = content.length();
+
+        content =
+                content.substring(0, pos)
+                        + operation.getText()
+                        + content.substring(pos);
+    }
+
+    // DELETE
+    if ("delete".equals(operation.getType())) {
+
+        int pos = operation.getPosition();
+        int len = operation.getLength();
+
+        if (pos >= 0 && pos < content.length()) {
+
+            int end = Math.min(pos + len, content.length());
 
             content =
                     content.substring(0, pos)
-                            + operation.getText()
-                            + content.substring(pos);
-        }
-
-        // (delete coming next phase)
-
-        // 4. Save updated document to Redis
-        documentStateService.saveDocument(docId, content);
-
-        // 5. Broadcast updated content to all users in same doc
-        Set<WebSocketSession> sessions =
-                DocumentSessionManager.getSessions(docId);
-
-        String response = objectMapper.writeValueAsString(content);
-
-        for (WebSocketSession s : sessions) {
-            if (s.isOpen()) {
-                s.sendMessage(new TextMessage(response));
-            }
+                            + content.substring(end);
         }
     }
+
+    documentStateService.saveDocument(docId, content);
+
+    Set<WebSocketSession> sessions =
+            DocumentSessionManager.getSessions(docId);
+
+    String response = objectMapper.writeValueAsString(content);
+
+    for (WebSocketSession s : sessions) {
+        if (s.isOpen()) {
+            s.sendMessage(new TextMessage(response));
+        }
+    }
+}
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
