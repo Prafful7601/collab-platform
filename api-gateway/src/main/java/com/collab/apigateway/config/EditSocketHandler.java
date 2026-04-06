@@ -15,22 +15,24 @@ import com.collab.apigateway.engine.OperationTransformer;
 import com.collab.apigateway.event.EditEventProducer;
 import com.collab.apigateway.model.EditOperation;
 import com.collab.apigateway.service.DocumentStateService;
-import com.collab.apigateway.session.DocumentSessionManager;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.collab.apigateway.security.HtmlSanitizer;
 
 @Component
 public class EditSocketHandler extends TextWebSocketHandler {
 
     private final DocumentStateService documentStateService;
     private final EditEventProducer editEventProducer;
+    private final HtmlSanitizer htmlSanitizer;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public EditSocketHandler(
             DocumentStateService documentStateService,
-            EditEventProducer editEventProducer
+            EditEventProducer editEventProducer,
+            HtmlSanitizer htmlSanitizer
     ) {
         this.documentStateService = documentStateService;
         this.editEventProducer = editEventProducer;
+        this.htmlSanitizer = htmlSanitizer;
     }
 
     @Override
@@ -70,6 +72,9 @@ public class EditSocketHandler extends TextWebSocketHandler {
         // For HTML content, we use full document replacement
         if ("update".equals(operation.getType())) {
             String htmlContent = operation.getContent() != null ? operation.getContent() : operation.getText();
+
+            // Sanitize HTML content to prevent XSS attacks
+            htmlContent = htmlSanitizer.sanitize(htmlContent);
 
             // Save to Redis
             documentStateService.saveDocument(docId, htmlContent);
