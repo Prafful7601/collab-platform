@@ -11,6 +11,7 @@ import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import com.collab.apigateway.engine.OperationHistory;
 import com.collab.apigateway.engine.OperationTransformer;
+import com.collab.apigateway.event.EditEventProducer;
 import com.collab.apigateway.model.EditOperation;
 import com.collab.apigateway.service.DocumentStateService;
 import com.collab.apigateway.session.DocumentSessionManager;
@@ -20,10 +21,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class EditSocketHandler extends TextWebSocketHandler {
 
     private final DocumentStateService documentStateService;
+    private final EditEventProducer editEventProducer;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public EditSocketHandler(DocumentStateService documentStateService) {
+    public EditSocketHandler(
+            DocumentStateService documentStateService,
+            EditEventProducer editEventProducer
+    ) {
         this.documentStateService = documentStateService;
+        this.editEventProducer = editEventProducer;
     }
 
     @Override
@@ -37,13 +43,18 @@ public class EditSocketHandler extends TextWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
 
-        // 1. Parse incoming operation
+        // 1. Parse operation from client
         EditOperation operation =
                 objectMapper.readValue(message.getPayload(), EditOperation.class);
 
         String docId = operation.getDocumentId();
 
-        // 2. Transform operation using history (Operational Transform)
+        // 2. Publish edit event to Kafka
+        editEventProducer.publishEdit(
+                objectMapper.writeValueAsString(operation)
+        );
+
+        // 3. Transform operation using history (Operational Transform)
         List<EditOperation> history =
                 OperationHistory.getHistory(docId);
 
@@ -51,14 +62,14 @@ public class EditSocketHandler extends TextWebSocketHandler {
             operation = OperationTransformer.transform(operation, prev);
         }
 
-        // 3. Fetch document from Redis
+        // 4. Fetch current document state from Redis
         String content = documentStateService.getDocument(docId);
 
         if (content == null) {
             content = "";
         }
 
-        // 4. APPLY INSERT
+        // 5. APPLY INSERT
         if ("insert".equals(operation.getType())) {
 
             int pos = operation.getPosition();
@@ -72,7 +83,7 @@ public class EditSocketHandler extends TextWebSocketHandler {
                             + content.substring(pos);
         }
 
-        // 5. APPLY DELETE
+        // 6. APPLY DELETE
         if ("delete".equals(operation.getType())) {
 
             int pos = operation.getPosition();
@@ -88,17 +99,18 @@ public class EditSocketHandler extends TextWebSocketHandler {
             }
         }
 
-        // 6. Save updated document in Redis
+        // 7. Save updated document to Redis
         documentStateService.saveDocument(docId, content);
 
-        // 7. Save operation in history
+        // 8. Save operation in history
         OperationHistory.addOperation(docId, operation);
 
-        // 8. Broadcast updated content to document session
+        // 9. Broadcast updated document to all users editing the same document
         Set<WebSocketSession> sessions =
                 DocumentSessionManager.getSessions(docId);
 
-        String response = objectMapper.writeValueAsString(content);
+        String response =
+                objectMapper.writeValueAsString(content);
 
         for (WebSocketSession s : sessions) {
 
