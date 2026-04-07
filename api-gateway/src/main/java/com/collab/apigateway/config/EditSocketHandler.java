@@ -77,6 +77,9 @@ public class EditSocketHandler extends TextWebSocketHandler {
             case "title-update":
                 handleTitleUpdate(operation, docId);
                 return;
+            case "metadata-update":
+                handleMetadataUpdate(operation, docId);
+                return;
             case "update":
             case "replace":
                 handleLegacySnapshot(operation, docId);
@@ -126,7 +129,7 @@ public class EditSocketHandler extends TextWebSocketHandler {
     }
 
     private void handleTitleUpdate(EditOperation operation, String docId) throws Exception {
-        Document updatedDocument = documentStateService.updateDocument(docId, sanitizeTitle(operation.getTitle()), null);
+        Document updatedDocument = documentStateService.updateDocument(docId, sanitizeTitle(operation.getTitle()), null, null, null, null);
 
         operation.setVersion(updatedDocument.getVersion());
         operation.setTimestamp(resolveTimestamp(operation.getTimestamp()));
@@ -136,15 +139,45 @@ public class EditSocketHandler extends TextWebSocketHandler {
         broadcastSnapshot(docId, updatedDocument, "title-update", operation.getClientId());
     }
 
+    private void handleMetadataUpdate(EditOperation operation, String docId) throws Exception {
+        Document updatedDocument = documentStateService.updateDocument(
+                docId,
+                null,
+                null,
+                sanitizeEditorMode(operation.getEditorMode()),
+                sanitizeFileName(operation.getFileName(), operation.getEditorMode()),
+                sanitizeLanguage(operation.getLanguage(), operation.getEditorMode())
+        );
+
+        operation.setVersion(updatedDocument.getVersion());
+        operation.setTimestamp(resolveTimestamp(operation.getTimestamp()));
+        operation.setEditorMode(updatedDocument.getEditorMode());
+        operation.setFileName(updatedDocument.getFileName());
+        operation.setLanguage(updatedDocument.getLanguage());
+
+        editEventProducer.publishEdit(objectMapper.writeValueAsString(buildSnapshotPayload(updatedDocument, "metadata-update", operation.getClientId())));
+        broadcastSnapshot(docId, updatedDocument, "metadata-update", operation.getClientId());
+    }
+
     private void handleLegacySnapshot(EditOperation operation, String docId) throws Exception {
         String rawContent = operation.getContent() != null ? operation.getContent() : operation.getText();
         String sanitizedContent = htmlSanitizer.sanitize(rawContent != null ? rawContent : "");
-        Document updatedDocument = documentStateService.updateDocument(docId, sanitizeTitle(operation.getTitle()), sanitizedContent);
+        Document updatedDocument = documentStateService.updateDocument(
+                docId,
+                sanitizeTitle(operation.getTitle()),
+                sanitizedContent,
+                sanitizeEditorMode(operation.getEditorMode()),
+                sanitizeFileName(operation.getFileName(), operation.getEditorMode()),
+                sanitizeLanguage(operation.getLanguage(), operation.getEditorMode())
+        );
 
         operation.setVersion(updatedDocument.getVersion());
         operation.setTimestamp(resolveTimestamp(operation.getTimestamp()));
         operation.setContent(updatedDocument.getContent());
         operation.setTitle(updatedDocument.getTitle());
+        operation.setEditorMode(updatedDocument.getEditorMode());
+        operation.setFileName(updatedDocument.getFileName());
+        operation.setLanguage(updatedDocument.getLanguage());
 
         editEventProducer.publishEdit(objectMapper.writeValueAsString(buildSnapshotPayload(updatedDocument, "snapshot", operation.getClientId())));
         broadcastSnapshot(docId, updatedDocument, "snapshot", operation.getClientId());
@@ -246,6 +279,9 @@ public class EditSocketHandler extends TextWebSocketHandler {
         payload.put("documentId", document.getId());
         payload.put("title", document.getTitle());
         payload.put("content", document.getContent());
+        payload.put("editorMode", document.getEditorMode());
+        payload.put("fileName", document.getFileName());
+        payload.put("language", document.getLanguage());
         payload.put("version", document.getVersion());
         payload.put("timestamp", System.currentTimeMillis());
         payload.put("participants", DocumentSessionManager.getParticipantCount(document.getId()));
@@ -266,6 +302,9 @@ public class EditSocketHandler extends TextWebSocketHandler {
         payload.put("length", operation.getLength());
         payload.put("text", operation.getText());
         payload.put("title", document.getTitle());
+        payload.put("editorMode", document.getEditorMode());
+        payload.put("fileName", document.getFileName());
+        payload.put("language", document.getLanguage());
         payload.put("version", operation.getVersion());
         payload.put("timestamp", operation.getTimestamp());
         payload.put("participants", DocumentSessionManager.getParticipantCount(document.getId()));
@@ -277,6 +316,30 @@ public class EditSocketHandler extends TextWebSocketHandler {
     private String sanitizeTitle(String title) {
         String normalized = title != null ? title.replaceAll("[\\r\\n]+", " ").trim() : "";
         return StringUtils.hasText(normalized) ? normalized : "Untitled document";
+    }
+
+    private String sanitizeEditorMode(String editorMode) {
+        return "code".equalsIgnoreCase(editorMode) ? "code" : "doc";
+    }
+
+    private String sanitizeFileName(String fileName, String editorMode) {
+        String normalized = fileName != null ? fileName.replaceAll("[\\\\/:*?\"<>|]+", "-").trim() : "";
+
+        if (StringUtils.hasText(normalized)) {
+            return normalized;
+        }
+
+        return "code".equalsIgnoreCase(editorMode) ? "main.js" : "notes.md";
+    }
+
+    private String sanitizeLanguage(String language, String editorMode) {
+        String normalized = language != null ? language.trim().toLowerCase() : "";
+
+        if (StringUtils.hasText(normalized)) {
+            return normalized;
+        }
+
+        return "code".equalsIgnoreCase(editorMode) ? "javascript" : "markdown";
     }
 
     private long resolveTimestamp(Long timestamp) {

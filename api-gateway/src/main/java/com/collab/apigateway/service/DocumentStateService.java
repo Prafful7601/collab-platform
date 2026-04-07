@@ -93,6 +93,9 @@ public class DocumentStateService {
         document.setId(docId);
         document.setTitle("Untitled document");
         document.setContent("");
+        document.setEditorMode("doc");
+        document.setFileName("notes.md");
+        document.setLanguage("markdown");
         document.setVersion(0);
         document.setCreatedAt(now);
         document.setUpdatedAt(now);
@@ -114,7 +117,7 @@ public class DocumentStateService {
         }
     }
 
-    public Document updateDocument(String docId, String title, String content) {
+    public Document updateDocument(String docId, String title, String content, String editorMode, String fileName, String language) {
         Document document = getOrCreateDocument(docId);
 
         if (title != null) {
@@ -123,6 +126,18 @@ public class DocumentStateService {
 
         if (content != null) {
             document.setContent(content);
+        }
+
+        if (editorMode != null) {
+            document.setEditorMode(editorMode);
+        }
+
+        if (fileName != null) {
+            document.setFileName(fileName);
+        }
+
+        if (language != null) {
+            document.setLanguage(language);
         }
 
         document.setVersion(document.getVersion() + 1);
@@ -148,6 +163,9 @@ public class DocumentStateService {
         document.setId(source.getId());
         document.setTitle(StringUtils.hasText(source.getTitle()) ? source.getTitle().trim() : "Untitled document");
         document.setContent(source.getContent() != null ? source.getContent() : "");
+        document.setEditorMode(normalizeEditorMode(source.getEditorMode()));
+        document.setFileName(normalizeFileName(source.getFileName(), document.getEditorMode()));
+        document.setLanguage(normalizeLanguage(source.getLanguage(), document.getEditorMode()));
         document.setVersion(Math.max(0, source.getVersion()));
         document.setCreatedAt(source.getCreatedAt() > 0 ? source.getCreatedAt() : now);
         document.setUpdatedAt(source.getUpdatedAt() > 0 ? source.getUpdatedAt() : document.getCreatedAt());
@@ -159,9 +177,32 @@ public class DocumentStateService {
         document.setId(source.getId());
         document.setTitle(source.getTitle());
         document.setContent(source.getContent());
+        document.setEditorMode(source.getEditorMode());
+        document.setFileName(source.getFileName());
+        document.setLanguage(source.getLanguage());
         document.setVersion(source.getVersion());
         document.setCreatedAt(source.getCreatedAt());
         document.setUpdatedAt(source.getUpdatedAt());
         return document;
+    }
+
+    private String normalizeEditorMode(String editorMode) {
+        return "code".equalsIgnoreCase(editorMode) ? "code" : "doc";
+    }
+
+    private String normalizeFileName(String fileName, String editorMode) {
+        if (StringUtils.hasText(fileName)) {
+            return fileName.trim();
+        }
+
+        return "code".equals(editorMode) ? "main.js" : "notes.md";
+    }
+
+    private String normalizeLanguage(String language, String editorMode) {
+        if (StringUtils.hasText(language)) {
+            return language.trim().toLowerCase();
+        }
+
+        return "code".equals(editorMode) ? "javascript" : "markdown";
     }
 }

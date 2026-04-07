@@ -39,6 +39,9 @@ public class StoredDocumentService {
         snapshot.setDocumentId(documentId);
         snapshot.setTitle(normalizeTitle(request.getTitle()));
         snapshot.setContent(request.getContent() != null ? request.getContent() : "");
+        snapshot.setEditorMode(normalizeEditorMode(request.getEditorMode()));
+        snapshot.setFileName(normalizeFileName(request.getFileName(), snapshot.getEditorMode()));
+        snapshot.setLanguage(normalizeLanguage(request.getLanguage(), snapshot.getEditorMode()));
         snapshot.setVersion(Math.max(0, request.getVersion()));
         snapshot.setCreatedAt(snapshot.getCreatedAt() > 0 ? snapshot.getCreatedAt() : now);
         snapshot.setUpdatedAt(now);
@@ -51,6 +54,9 @@ public class StoredDocumentService {
         document.setId(snapshot.getDocumentId());
         document.setTitle(snapshot.getTitle());
         document.setContent(snapshot.getContent());
+        document.setEditorMode(snapshot.getEditorMode());
+        document.setFileName(snapshot.getFileName());
+        document.setLanguage(snapshot.getLanguage());
         document.setVersion(snapshot.getVersion());
         document.setCreatedAt(snapshot.getCreatedAt());
         document.setUpdatedAt(snapshot.getUpdatedAt());
@@ -59,5 +65,25 @@ public class StoredDocumentService {
 
     private String normalizeTitle(String title) {
         return StringUtils.hasText(title) ? title.trim() : "Untitled document";
+    }
+
+    private String normalizeEditorMode(String editorMode) {
+        return "code".equalsIgnoreCase(editorMode) ? "code" : "doc";
+    }
+
+    private String normalizeFileName(String fileName, String editorMode) {
+        if (StringUtils.hasText(fileName)) {
+            return fileName.trim();
+        }
+
+        return "code".equals(editorMode) ? "main.js" : "notes.md";
+    }
+
+    private String normalizeLanguage(String language, String editorMode) {
+        if (StringUtils.hasText(language)) {
+            return language.trim().toLowerCase();
+        }
+
+        return "code".equals(editorMode) ? "javascript" : "markdown";
     }
 }

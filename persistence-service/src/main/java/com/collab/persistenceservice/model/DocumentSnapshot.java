@@ -17,6 +17,10 @@ public class DocumentSnapshot {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    private String editorMode;
+    private String fileName;
+    private String language;
+
     private int version;
     private long createdAt;
     private long updatedAt;

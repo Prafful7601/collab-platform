@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Collab Docs</title>
+    <title>Collab Workspace</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root{--bg:#f6f0e5;--paper:#fffdf8;--text:#30271d;--muted:#7a6550;--line:rgba(102,79,49,.1);--accent:#1f6f62;--accent-2:#145148;--soft:rgba(31,111,98,.12);--warn:#c48d2d;--danger:#c05541;--shadow:0 24px 60px rgba(79,58,31,.14)}
         *{box-sizing:border-box} body{margin:0;min-height:100vh;font-family:"Manrope",sans-serif;color:var(--text);background:radial-gradient(circle at top left,rgba(232,181,97,.3),transparent 28%),radial-gradient(circle at top right,rgba(31,111,98,.18),transparent 24%),linear-gradient(180deg,#fbf7ef 0%,var(--bg) 52%,#efe6d8 100%)}
-        .page{width:min(1280px,calc(100vw - 24px));margin:14px auto 0;display:grid;grid-template-columns:280px minmax(0,1fr);gap:16px}
+        .page{width:min(1320px,calc(100vw - 24px));margin:14px auto 0;display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px}
         .card{background:rgba(255,250,242,.84);border:1px solid var(--line);border-radius:24px;backdrop-filter:blur(12px);box-shadow:0 14px 35px rgba(79,58,31,.08)}
         .sidebar{position:sticky;top:14px;display:grid;gap:14px;height:max-content}
         .panel{padding:18px}
@@ -28,13 +28,38 @@
         .title::placeholder{color:rgba(122,101,80,.58)} .sub{margin-top:10px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:.92rem}
         .pill{display:inline-flex;align-items:center;gap:10px;padding:9px 13px;border-radius:999px;background:rgba(255,255,255,.8);border:1px solid rgba(102,79,49,.08);font-weight:700}
         .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end} button{border:none;border-radius:14px;font:inherit;font-weight:700;cursor:pointer;padding:12px 16px;transition:transform .16s ease,background .16s ease} button:hover{transform:translateY(-1px)} .secondary{background:rgba(255,255,255,.82);border:1px solid rgba(102,79,49,.12);color:var(--text)} .primary{background:var(--accent);color:#fffdf8} .primary:hover{background:var(--accent-2)}
+        .segmented{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:14px}
+        .segmented button{padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.76);border:1px solid rgba(102,79,49,.1);color:var(--muted)}
+        .segmented button.active{background:linear-gradient(135deg,var(--accent) 0%,#2f8d7f 100%);color:#fffdf8;border-color:transparent;box-shadow:0 14px 28px rgba(31,111,98,.18)}
+        .mini-meta{display:grid;gap:12px;margin-top:14px}
+        .select{width:100%;padding:12px 13px;border-radius:14px;border:1px solid rgba(102,79,49,.12);background:rgba(255,255,255,.78);font:inherit;color:var(--text)}
+        .tiny-note{margin-top:12px;font-size:.84rem;line-height:1.55;color:var(--muted)}
         .workspace{margin-top:16px;padding:18px;border-radius:30px;background:linear-gradient(180deg,rgba(248,243,234,.88) 0%,rgba(239,231,218,.94) 100%);border:1px solid rgba(102,79,49,.08);box-shadow:var(--shadow)}
-        .paper{width:min(100%,920px);margin:0 auto;min-height:78vh;background:var(--paper);border-radius:24px;border:1px solid rgba(102,79,49,.1);overflow:hidden;box-shadow:0 26px 55px rgba(79,58,31,.12)}
+        .paper{width:min(100%,980px);margin:0 auto;min-height:78vh;background:var(--paper);border-radius:24px;border:1px solid rgba(102,79,49,.1);overflow:hidden;box-shadow:0 26px 55px rgba(79,58,31,.12);transition:background .2s ease,border-color .2s ease,box-shadow .2s ease}
+        .paper.code-mode{background:linear-gradient(180deg,#f7fbfa 0%,#edf4f3 100%);border-color:rgba(21,86,77,.14);box-shadow:0 28px 60px rgba(20,81,72,.16)}
         .paper-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 22px;border-bottom:1px solid rgba(102,79,49,.08);background:linear-gradient(135deg,rgba(31,111,98,.08),rgba(232,181,97,.12)),rgba(255,251,243,.92)} .paper-label{font-size:.9rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)} .paper-badge{padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.82);border:1px solid rgba(102,79,49,.08);font-size:.82rem;font-weight:700;color:var(--muted)}
-        .editor-wrap{padding:24px}.editor{width:100%;min-height:calc(78vh - 104px);resize:none;border:none;outline:none;background:transparent;color:var(--text);font:500 1.04rem/1.85 "Manrope",sans-serif} .editor::placeholder{color:rgba(122,101,80,.55)}
+        .paper.code-mode .paper-head{background:linear-gradient(135deg,rgba(20,81,72,.12),rgba(102,176,161,.14)),rgba(244,251,250,.95)}
+        .surface-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 22px 0}
+        .surface-switch{display:inline-flex;align-items:center;gap:8px;padding:6px;background:rgba(255,255,255,.74);border:1px solid rgba(102,79,49,.08);border-radius:18px}
+        .surface-switch button{padding:10px 14px;border-radius:12px;background:transparent;color:var(--muted)}
+        .surface-switch button.active{background:rgba(31,111,98,.12);color:var(--accent-2)}
+        .surface-codebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:.88rem}
+        .surface-codebar strong{color:var(--text)}
+        .surface-codebar .badge{display:inline-flex;align-items:center;padding:7px 11px;border-radius:999px;background:rgba(20,81,72,.1);border:1px solid rgba(20,81,72,.08);font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+        .editor-wrap{padding:24px}
+        .surface-shell{display:grid;grid-template-columns:minmax(0,1fr);border-radius:22px;overflow:hidden;border:1px solid rgba(102,79,49,.08);background:rgba(255,255,255,.55)}
+        .paper.code-mode .surface-shell{grid-template-columns:72px minmax(0,1fr);background:linear-gradient(180deg,#183a36 0%,#132c29 100%);border-color:rgba(255,255,255,.06)}
+        .line-numbers{display:none;padding:18px 0 18px 18px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border-right:1px solid rgba(255,255,255,.08);color:rgba(232,244,241,.52);font:600 .88rem/1.7 "Consolas","SFMono-Regular","Courier New",monospace;text-align:right;user-select:none;overflow:hidden}
+        .paper.code-mode .line-numbers{display:block}
+        .line-numbers span{display:block;padding-right:14px}
+        .editor{width:100%;min-height:calc(78vh - 178px);resize:none;border:none;outline:none;background:transparent;color:var(--text);font:500 1.04rem/1.85 "Manrope",sans-serif;padding:20px 22px}
+        .editor::placeholder{color:rgba(122,101,80,.55)}
+        .paper.code-mode .editor{color:#eaf4f1;font:500 .99rem/1.7 "Consolas","SFMono-Regular","Courier New",monospace;tab-size:4;caret-color:#8ef0d6}
+        .surface-hint{padding:0 24px 18px;color:var(--muted);font-size:.9rem;line-height:1.6}
+        .surface-hint strong{color:var(--text)}
         .credit{width:min(1280px,calc(100vw - 24px));margin:18px auto 22px;padding:16px 18px;border-radius:18px;background:rgba(255,250,242,.76);border:1px solid rgba(102,79,49,.08);text-align:center;color:var(--muted);font-size:.94rem;font-weight:700}.credit strong{color:var(--text)}
         @media (max-width:980px){.page{grid-template-columns:1fr}.sidebar{position:static;order:2}}
-        @media (max-width:720px){.page,.credit{width:calc(100vw - 14px)}.page{margin-top:7px;gap:12px}.topbar{padding:16px;flex-direction:column;align-items:stretch;border-radius:22px}.actions{justify-content:flex-start}.workspace{padding:10px;border-radius:22px}.paper{border-radius:18px;min-height:70vh}.paper-head{padding:14px 16px;flex-direction:column;align-items:flex-start}.editor-wrap{padding:18px}.editor{min-height:calc(70vh - 100px);font-size:1rem}}
+        @media (max-width:720px){.page,.credit{width:calc(100vw - 14px)}.page{margin-top:7px;gap:12px}.topbar{padding:16px;flex-direction:column;align-items:stretch;border-radius:22px}.actions{justify-content:flex-start}.workspace{padding:10px;border-radius:22px}.paper{border-radius:18px;min-height:70vh}.paper-head,.surface-toolbar{padding:14px 16px;flex-direction:column;align-items:flex-start}.surface-toolbar{padding-bottom:0}.editor-wrap{padding:18px}.surface-shell,.paper.code-mode .surface-shell{grid-template-columns:minmax(0,1fr)}.line-numbers{display:none !important}.editor{min-height:calc(70vh - 170px);font-size:1rem;padding:18px}.segmented{grid-template-columns:1fr}.surface-codebar{width:100%}}
     </style>
 </head>
 <body>
@@ -45,8 +70,8 @@
                 <div class="brand">
                     <div class="brand-mark">CD</div>
                     <div>
-                        <h1>Collab Docs</h1>
-                        <p>Operation-based syncing for smoother collaboration, plus a calmer writing UI.</p>
+                        <h1>Collab Workspace</h1>
+                        <p>Live collaboration for shared docs today, with a code-friendly surface ready when you want to switch modes.</p>
                     </div>
                 </div>
                 <div class="meta">
@@ -63,6 +88,33 @@
                     <div class="stat"><small>Version</small><strong id="versionCount">0</strong></div>
                     <div class="stat"><small>Queue</small><strong id="queueCount">0</strong></div>
                 </div>
+            </section>
+            <section class="card panel">
+                <span class="eyebrow">Workspace Mode</span>
+                <div class="segmented" role="tablist" aria-label="Editor mode">
+                    <button id="docModeButton" class="active" type="button" data-mode="doc">Document</button>
+                    <button id="codeModeButton" type="button" data-mode="code">Code</button>
+                </div>
+                <div class="mini-meta">
+                    <div>
+                        <span class="label">File Name</span>
+                        <input id="filenameInput" class="field" type="text" value="main.js" placeholder="main.js">
+                    </div>
+                    <div>
+                        <span class="label">Language</span>
+                        <select id="languageSelect" class="select">
+                            <option value="javascript">JavaScript</option>
+                            <option value="typescript">TypeScript</option>
+                            <option value="python">Python</option>
+                            <option value="java">Java</option>
+                            <option value="json">JSON</option>
+                            <option value="markdown">Markdown</option>
+                            <option value="html">HTML</option>
+                            <option value="css">CSS</option>
+                        </select>
+                    </div>
+                </div>
+                <p id="modeNote" class="tiny-note">Document mode keeps the writing experience soft and readable. Switch to code mode for a more technical editing surface.</p>
             </section>
             <section class="card panel">
                 <span class="eyebrow">How To Test</span>
@@ -96,14 +148,29 @@
             </header>
 
             <section class="workspace">
-                <article class="paper">
+                <article id="paper" class="paper">
                     <div class="paper-head">
-                        <div class="paper-label">Shared Draft</div>
-                        <div class="paper-badge">Versioned Operations Active</div>
+                        <div id="paperLabel" class="paper-label">Shared Draft</div>
+                        <div id="paperBadge" class="paper-badge">Versioned Operations Active</div>
+                    </div>
+                    <div class="surface-toolbar">
+                        <div class="surface-switch" role="tablist" aria-label="Workspace surface">
+                            <button id="docSurfaceButton" class="active" type="button" data-mode="doc">Docs Surface</button>
+                            <button id="codeSurfaceButton" type="button" data-mode="code">Code Surface</button>
+                        </div>
+                        <div id="surfaceCodebar" class="surface-codebar">
+                            <span class="badge">Live</span>
+                            <span><strong id="filenameBadge">main.js</strong></span>
+                            <span id="languageBadge">JavaScript</span>
+                        </div>
                     </div>
                     <div class="editor-wrap">
-                        <textarea id="editor" class="editor" spellcheck="true" placeholder="Start writing here. Open this same document in another tab or browser and both copies will stay in sync."></textarea>
+                        <div class="surface-shell">
+                            <div id="lineNumbers" class="line-numbers" aria-hidden="true"></div>
+                            <textarea id="editor" class="editor" spellcheck="true" placeholder="Start writing here. Open this same document in another tab or browser and both copies will stay in sync."></textarea>
+                        </div>
                     </div>
+                    <div id="surfaceHint" class="surface-hint"><strong>Document mode:</strong> write naturally, sketch ideas, and keep a clean collaborative draft open in every tab.</div>
                 </article>
             </section>
         </main>
@@ -128,6 +195,22 @@
         const copyLinkButton = document.getElementById("copyLinkButton");
         const newDocumentButton = document.getElementById("newDocumentButton");
         const recentDocs = document.getElementById("recentDocs");
+        const paper = document.getElementById("paper");
+        const paperLabel = document.getElementById("paperLabel");
+        const paperBadge = document.getElementById("paperBadge");
+        const lineNumbers = document.getElementById("lineNumbers");
+        const surfaceHint = document.getElementById("surfaceHint");
+        const filenameInput = document.getElementById("filenameInput");
+        const languageSelect = document.getElementById("languageSelect");
+        const filenameBadge = document.getElementById("filenameBadge");
+        const languageBadge = document.getElementById("languageBadge");
+        const modeNote = document.getElementById("modeNote");
+        const modeButtons = [
+            document.getElementById("docModeButton"),
+            document.getElementById("codeModeButton"),
+            document.getElementById("docSurfaceButton"),
+            document.getElementById("codeSurfaceButton")
+        ];
 
         const clientId = crypto.randomUUID ? crypto.randomUUID() : `client-${Date.now()}`;
         const httpOrigin = location.origin && location.origin.startsWith("http") ? location.origin : "http://localhost:8080";
@@ -139,15 +222,88 @@
         let reconnectAttempts = 0;
         let reconnectTimer = null;
         let titleTimer = null;
+        let metadataTimer = null;
         let initialized = false;
         let pendingOperations = [];
         let inflightOperation = null;
         let remoteBuffer = [];
+        let editorMode = "doc";
+
+        function lineCount(value) { return textValue(value).split("\n").length; }
+        function normalizeEditorMode(value) { return value === "code" ? "code" : "doc"; }
+        function defaultFileName(mode = editorMode) { return mode === "code" ? "main.js" : "notes.md"; }
+        function defaultLanguage(mode = editorMode) { return mode === "code" ? "javascript" : "markdown"; }
+        function normalizeFileName(value, mode = editorMode) { const next = (value || "").replace(/[\\/:*?"<>|]+/g, "-").trim(); return next || defaultFileName(mode); }
+        function normalizeLanguage(value, mode = editorMode) {
+            const next = (value || "").trim().toLowerCase();
+            if (languageSelect.querySelector(`option[value="${next}"]`)) return next;
+            return defaultLanguage(mode);
+        }
+        function languageLabel(value) { return languageSelect.querySelector(`option[value="${value}"]`)?.textContent || "Plain Text"; }
+        function documentSeed() {
+            return {
+                title: "Untitled document",
+                content: "",
+                version: 0,
+                editorMode: "doc",
+                fileName: "notes.md",
+                language: "markdown"
+            };
+        }
 
         function makeId(prefix) { return `${prefix}-${crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`}`; }
         function normalizeTitle(value) { const t = (value || "").replace(/[\r\n]+/g, " ").trim(); return t || "Untitled document"; }
         function textValue(value) { return value != null ? value : ""; }
         function wsUrl() { const u = new URL(httpOrigin); return `${u.protocol === "https:" ? "wss:" : "ws:"}//${u.host}/collab?docId=${encodeURIComponent(documentId)}`; }
+
+        function syncModeButtons() {
+            modeButtons.forEach((button) => {
+                const active = button.dataset.mode === editorMode;
+                button.classList.toggle("active", active);
+                button.setAttribute("aria-selected", String(active));
+            });
+        }
+
+        function renderLineNumbers() {
+            const totalLines = Math.max(1, lineCount(editor.value));
+            lineNumbers.innerHTML = Array.from({ length: totalLines }, (_, index) => `<span>${index + 1}</span>`).join("");
+            lineNumbers.scrollTop = editor.scrollTop;
+        }
+
+        function applyDocumentMetadata(doc) {
+            const nextMode = normalizeEditorMode(doc?.editorMode);
+            const nextFileName = normalizeFileName(doc?.fileName, nextMode);
+            const nextLanguage = normalizeLanguage(doc?.language, nextMode);
+
+            filenameInput.value = nextFileName;
+            languageSelect.value = nextLanguage;
+            applyEditorMode(nextMode);
+        }
+
+        function applyEditorMode(nextMode, focusEditor = false) {
+            editorMode = normalizeEditorMode(nextMode);
+            paper.classList.toggle("code-mode", editorMode === "code");
+            editor.spellcheck = editorMode !== "code";
+            paperLabel.textContent = editorMode === "code" ? "Shared Code Session" : "Shared Draft";
+            paperBadge.textContent = editorMode === "code" ? "Code Collaboration Surface" : "Versioned Operations Active";
+            surfaceHint.innerHTML = editorMode === "code"
+                ? "<strong>Code mode:</strong> same live collaboration engine, but with a developer-friendly surface, line numbers, file naming, and language context."
+                : "<strong>Document mode:</strong> write naturally, sketch ideas, and keep a clean collaborative draft open in every tab.";
+            modeNote.textContent = editorMode === "code"
+                ? "Code mode changes the editing surface and syncs file-oriented metadata for everyone in this document."
+                : "Document mode keeps the writing experience soft and readable. Switch to code mode for a more technical editing surface.";
+            editor.placeholder = editorMode === "code"
+                ? "Start coding here. Use this same share link in another tab to collaborate on snippets, architecture notes, or interview exercises."
+                : "Start writing here. Open this same document in another tab or browser and both copies will stay in sync.";
+            filenameBadge.textContent = normalizeFileName(filenameInput.value, editorMode);
+            languageBadge.textContent = languageLabel(normalizeLanguage(languageSelect.value, editorMode));
+            syncModeButtons();
+            updateStats();
+            renderLineNumbers();
+            if (focusEditor) {
+                editor.focus();
+            }
+        }
 
         function setStatus(message, state = "live") {
             statusText.textContent = message;
@@ -169,10 +325,13 @@
 
         function updateStats() {
             const words = editor.value.trim() ? editor.value.trim().split(/\s+/).length : 0;
-            wordCount.textContent = String(words);
+            const lines = lineCount(editor.value);
+            wordCount.previousElementSibling.textContent = editorMode === "code" ? "Lines" : "Words";
+            wordCount.textContent = String(editorMode === "code" ? lines : words);
             charCount.textContent = String(editor.value.length);
             versionCount.textContent = String(confirmedVersion);
             queueCount.textContent = String(pendingOperations.length + (inflightOperation ? 1 : 0) + remoteBuffer.length);
+            renderLineNumbers();
         }
 
         function formatUpdatedAt(ts) {
@@ -191,8 +350,9 @@
                     .replace(/&/g, "&amp;")
                     .replace(/</g, "&lt;")
                     .replace(/>/g, "&gt;");
+                const modeLabel = document.editorMode === "code" ? "Code" : "Doc";
 
-                return `<button class="tip" type="button" data-doc-id="${document.id}" style="text-align:left"><strong style="display:block;color:var(--text);margin-bottom:4px">${safeTitle}</strong><span>Updated ${formatUpdatedAt(document.updatedAt)}</span></button>`;
+                return `<button class="tip" type="button" data-doc-id="${document.id}" style="text-align:left"><strong style="display:flex;justify-content:space-between;gap:12px;color:var(--text);margin-bottom:4px"><span>${safeTitle}</span><span style="color:var(--accent-2);font-size:.74rem;text-transform:uppercase;letter-spacing:.06em">${modeLabel}</span></strong><span>Updated ${formatUpdatedAt(document.updatedAt)}</span></button>`;
             }).join("");
 
             recentDocs.querySelectorAll("[data-doc-id]").forEach((button) => {
@@ -239,11 +399,33 @@
             editor.value = textValue(doc.content);
             currentText = editor.value;
             confirmedVersion = Number(doc.version) || 0;
+            applyDocumentMetadata(doc);
             if (keepSelection) {
                 const max = editor.value.length;
                 editor.setSelectionRange(Math.min(start, max), Math.min(end, max));
             }
             updateStats();
+        }
+
+        function queueMetadataSync(nextMode = editorMode) {
+            if (!initialized) return;
+            clearTimeout(metadataTimer);
+            setStatus("Saving workspace settings...", "pending");
+            metadataTimer = setTimeout(() => {
+                if (!socket || socket.readyState !== WebSocket.OPEN) return;
+                socket.send(JSON.stringify({
+                    type: "metadata-update",
+                    editorMode: normalizeEditorMode(nextMode),
+                    fileName: normalizeFileName(filenameInput.value, nextMode),
+                    language: normalizeLanguage(languageSelect.value, nextMode),
+                    documentId,
+                    clientId,
+                    operationId: makeId("meta"),
+                    version: confirmedVersion,
+                    timestamp: Date.now()
+                }));
+                loadRecentDocs();
+            }, 180);
         }
 
         function diffOps(oldText, newText) {
@@ -355,10 +537,19 @@
                 updateStats();
                 return;
             }
+            if (payload.clientId === clientId && payload.type === "metadata-update") {
+                confirmedVersion = Number(payload.version) || confirmedVersion;
+                applyDocumentMetadata(payload);
+                setLastSaved(payload.timestamp || Date.now());
+                setStatus("Workspace settings synced");
+                setPresence(payload.participants);
+                updateStats();
+                return;
+            }
             applySnapshot(payload, document.activeElement === editor);
             setPresence(payload.participants);
             setLastSaved(payload.timestamp || Date.now());
-            setStatus(payload.type === "title-update" ? "Title updated" : "Snapshot synced");
+            setStatus(payload.type === "title-update" ? "Title updated" : payload.type === "metadata-update" ? "Workspace updated" : "Snapshot synced");
             loadRecentDocs();
         }
 
@@ -367,7 +558,7 @@
             try { payload = JSON.parse(event.data); } catch (error) { console.error("Invalid WebSocket payload:", error, event.data); return; }
             if (payload.type === "presence") { setPresence(payload.participants); return; }
             if (payload.type === "operation") { onOperation(payload); return; }
-            if (payload.type === "snapshot" || payload.type === "title-update") onSnapshot(payload);
+            if (payload.type === "snapshot" || payload.type === "title-update" || payload.type === "metadata-update") onSnapshot(payload);
         }
 
         function scheduleReconnect() {
@@ -410,7 +601,7 @@
             const url = new URL(location.href);
             documentId = url.searchParams.get("doc");
             if (!documentId) {
-                const created = await fetchJson("/documents", { method: "POST", body: JSON.stringify({ title: "Untitled document", content: "", version: 0 }) });
+                const created = await fetchJson("/documents", { method: "POST", body: JSON.stringify(documentSeed()) });
                 documentId = created.id;
                 setDocumentLocation(documentId);
                 applySnapshot(created);
@@ -418,7 +609,7 @@
                 setDocumentLocation(documentId);
                 try { applySnapshot(await fetchJson(`/documents/${encodeURIComponent(documentId)}`)); }
                 catch {
-                    const created = await fetchJson("/documents", { method: "POST", body: JSON.stringify({ title: "Untitled document", content: "", version: 0 }) });
+                    const created = await fetchJson("/documents", { method: "POST", body: JSON.stringify(documentSeed()) });
                     documentId = created.id;
                     setDocumentLocation(documentId);
                     applySnapshot(created);
@@ -442,6 +633,25 @@
             enqueueOps(ops);
             updateStats();
         });
+        editor.addEventListener("scroll", () => { lineNumbers.scrollTop = editor.scrollTop; });
+        filenameInput.addEventListener("input", () => {
+            filenameBadge.textContent = normalizeFileName(filenameInput.value, editorMode);
+            queueMetadataSync(editorMode);
+        });
+        filenameInput.addEventListener("blur", () => {
+            filenameInput.value = normalizeFileName(filenameInput.value, editorMode);
+            filenameBadge.textContent = filenameInput.value;
+            queueMetadataSync(editorMode);
+        });
+        languageSelect.addEventListener("change", () => {
+            languageSelect.value = normalizeLanguage(languageSelect.value, editorMode);
+            languageBadge.textContent = languageLabel(languageSelect.value);
+            queueMetadataSync(editorMode);
+        });
+        modeButtons.forEach((button) => button.addEventListener("click", () => {
+            applyEditorMode(button.dataset.mode, true);
+            queueMetadataSync(button.dataset.mode);
+        }));
 
         titleInput.addEventListener("input", queueTitleSync);
         copyLinkButton.addEventListener("click", async () => {
@@ -452,7 +662,7 @@
         newDocumentButton.addEventListener("click", async () => {
             setStatus("Creating a fresh document...", "pending");
             try {
-                const created = await fetchJson("/documents", { method: "POST", body: JSON.stringify({ title: "Untitled document", content: "", version: 0 }) });
+                const created = await fetchJson("/documents", { method: "POST", body: JSON.stringify(documentSeed()) });
                 location.assign(`/?doc=${encodeURIComponent(created.id)}`);
             } catch (error) {
                 console.error("Could not create a new document:", error);
@@ -462,6 +672,7 @@
         addEventListener("beforeunload", () => {
             clearTimeout(reconnectTimer);
             clearTimeout(titleTimer);
+            clearTimeout(metadataTimer);
             if (socket && socket.readyState === WebSocket.OPEN) socket.close();
         });
         bootstrap().catch((error) => { console.error("Bootstrap failed:", error); setStatus("Editor failed to start", "offline"); });
