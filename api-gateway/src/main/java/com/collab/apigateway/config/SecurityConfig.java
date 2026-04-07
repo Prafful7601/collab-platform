@@ -44,9 +44,12 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(authz -> authz
-                .requestMatchers("/ws/**").permitAll() // WebSocket endpoint - will be secured later
-                .requestMatchers("/api/auth/**").permitAll() // Auth endpoints
-                .requestMatchers("/api/public/**").permitAll() // Public endpoints
+                .requestMatchers("/", "/index.html", "/error", "/favicon.ico").permitAll()
+                .requestMatchers("/documents/**").permitAll()
+                .requestMatchers("/collab").permitAll()
+                .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/public/**").permitAll()
                 .anyRequest().authenticated()
             );
 

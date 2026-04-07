@@ -12,8 +12,12 @@ public class DocumentSnapshot {
     @Id
     private String documentId;
 
+    private String title;
+
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    private int version;
+    private long createdAt;
     private long updatedAt;
 }
