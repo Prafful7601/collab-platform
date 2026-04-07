@@ -278,40 +278,54 @@
     </footer>
 
     <script>
-        const docId = "doc1";
-        const socket = new WebSocket("ws://localhost:8080/collab?docId=" + docId);
-
-        const editor = document.getElementById("editor");
+        const editor = document.getElementById('editor');
         const statusText = document.querySelector('.status span');
+        const docId = 'default-doc';
+        const backendHost = 'localhost:8080';
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 
-        let ignoreChanges = false;
-        let lastSaved = Date.now();
-        let undoStack = [];
-        let redoStack = [];
-        let lastContent = "";
-        let isTyping = false;
-        let typingTimer;
-
-        // Enhanced WebSocket with reconnection
+        let socket;
         let reconnectAttempts = 0;
         const maxReconnectAttempts = 5;
+        let reconnectDelay = 1000;
+        let ignoreChanges = false;
+        let lastContent = '';
+        let undoStack = [];
+        let redoStack = [];
+        let isTyping = false;
+        let typingTimer;
+        let lastSaved = Date.now();
 
-        function connectWebSocket() {
+        function getWebSocketUrl() {
+            return `${protocol}//${backendHost}/ws/editor?docId=${docId}`;
+        }
+
+        function initWebSocket() {
+            socket = new WebSocket(getWebSocketUrl());
+
             socket.onopen = function() {
                 console.log('Connected to collaborative editor');
                 updateStatus('Connected');
                 reconnectAttempts = 0;
+                reconnectDelay = 1000;
             };
 
             socket.onmessage = function(event) {
-                ignoreChanges = true;
-                const newContent = event.data;
-                saveToHistory();
-                editor.innerHTML = newContent;
-                lastContent = newContent;
-                ignoreChanges = false;
-                updateStatus('All changes saved');
-                lastSaved = Date.now();
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'update') {
+                        ignoreChanges = true;
+                        const newContent = data.content || '';
+                        saveToHistory();
+                        editor.innerHTML = newContent;
+                        lastContent = newContent;
+                        ignoreChanges = false;
+                        updateStatus('All changes saved');
+                        lastSaved = Date.now();
+                    }
+                } catch (err) {
+                    console.error('Invalid WebSocket payload:', err, event.data);
+                }
             };
 
             socket.onclose = function() {
@@ -331,17 +345,17 @@
                 updateStatus(`Reconnecting... (${reconnectAttempts}/${maxReconnectAttempts})`);
 
                 setTimeout(() => {
-                    const newSocket = new WebSocket("ws://localhost:8080/collab?docId=" + docId);
-                    Object.assign(socket, newSocket);
-                    connectWebSocket();
-                }, 2000 * reconnectAttempts);
+                    initWebSocket();
+                }, reconnectDelay);
+
+                reconnectDelay = Math.min(reconnectDelay * 2, 30000);
             } else {
                 updateStatus('Failed to reconnect');
             }
         }
 
-        connectWebSocket();
-        // Toolbar button event listeners with visual feedback
+        initWebSocket();
+
         document.querySelectorAll('.toolbar-button').forEach(button => {
             button.addEventListener('click', function() {
                 const action = this.title.toLowerCase();
@@ -349,7 +363,7 @@
 
                 setTimeout(() => this.classList.remove('active'), 150);
 
-                switch(action) {
+                switch (action) {
                     case 'bold':
                         document.execCommand('bold', false, null);
                         break;
@@ -360,10 +374,10 @@
                         document.execCommand('underline', false, null);
                         break;
                     case 'undo':
-                        document.execCommand('undo', false, null);
+                        undo();
                         break;
                     case 'redo':
-                        document.execCommand('redo', false, null);
+                        redo();
                         break;
                 }
 
@@ -372,12 +386,11 @@
             });
         });
 
-        // Enhanced keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             if (e.ctrlKey || e.metaKey) {
                 let handled = true;
 
-                switch(e.key.toLowerCase()) {
+                switch (e.key.toLowerCase()) {
                     case 'b':
                         document.execCommand('bold', false, null);
                         break;
@@ -389,13 +402,13 @@
                         break;
                     case 'z':
                         if (e.shiftKey) {
-                            document.execCommand('redo', false, null);
+                            redo();
                         } else {
-                            document.execCommand('undo', false, null);
+                            undo();
                         }
                         break;
                     case 'y':
-                        document.execCommand('redo', false, null);
+                        redo();
                         break;
                     case 'a':
                         document.execCommand('selectAll', false, null);
@@ -412,8 +425,7 @@
             }
         });
 
-        // Real-time collaboration with debouncing
-        editor.addEventListener("input", function(e) {
+        editor.addEventListener('input', function() {
             if (ignoreChanges) return;
 
             clearTimeout(typingTimer);
@@ -423,14 +435,12 @@
             typingTimer = setTimeout(() => {
                 isTyping = false;
                 sendUpdate();
-            }, 300); // Debounce for 300ms
+            }, 300);
         });
 
-        // Send updates immediately on keyup for better responsiveness
-        editor.addEventListener("keyup", function(e) {
+        editor.addEventListener('keyup', function(e) {
             if (ignoreChanges) return;
 
-            // Send immediately for certain keys
             if (['Enter', ' ', '.', ',', '!', '?'].includes(e.key)) {
                 clearTimeout(typingTimer);
                 sendUpdate();
@@ -441,13 +451,13 @@
             updateStatus('Saving...');
 
             const operation = {
-                type: "replace",
-                text: editor.innerHTML,
+                type: 'update',
+                content: editor.innerHTML,
                 documentId: docId,
                 timestamp: Date.now()
             };
 
-            if (socket.readyState === WebSocket.OPEN) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
                 socket.send(JSON.stringify(operation));
             }
 
@@ -464,71 +474,44 @@
         }
 
         function saveToHistory() {
-            if (lastContent !== editor.value) {
+            const currentContent = editor.innerHTML;
+            if (lastContent !== currentContent) {
                 undoStack.push(lastContent);
-                redoStack = []; // Clear redo stack when new changes are made
-                lastContent = editor.value;
+                redoStack = [];
+                lastContent = currentContent;
 
-                // Limit undo stack size
                 if (undoStack.length > 50) {
                     undoStack.shift();
                 }
             }
         }
 
-        socket.onopen = function() {
-            console.log('Connected to collaborative editor');
-            updateStatus('Connected');
-        };
+        function undo() {
+            if (undoStack.length > 0) {
+                redoStack.push(lastContent);
+                lastContent = undoStack.pop();
+                ignoreChanges = true;
+                editor.innerHTML = lastContent;
+                ignoreChanges = false;
+                triggerInput();
+            }
+        }
 
-        socket.onmessage = function(event) {
-            ignoreChanges = true;
-            const newContent = event.data;
-            saveToHistory(); // Save current state before receiving new content
-            editor.value = newContent;
-            lastContent = newContent;
-            ignoreChanges = false;
-            updateStatus('All changes saved');
-            lastSaved = Date.now();
-        };
-
-        socket.onclose = function() {
-            updateStatus('Disconnected');
-        };
-
-        socket.onerror = function(error) {
-            console.error('WebSocket error:', error);
-            updateStatus('Connection error');
-        };
-
-        editor.addEventListener("input", function(e) {
-            if (ignoreChanges) return;
-
-            saveToHistory(); // Save state for undo functionality
-            updateStatus('Saving...');
-
-            const operation = {
-                type: "replace",
-                text: editor.value,
-                documentId: docId
-            };
-
-            socket.send(JSON.stringify(operation));
-
-            // Simulate auto-save indicator
-            setTimeout(() => {
-                if (Date.now() - lastSaved > 1000) {
-                    updateStatus('All changes saved');
-                    lastSaved = Date.now();
-                }
-            }, 500);
-        });
+        function redo() {
+            if (redoStack.length > 0) {
+                undoStack.push(lastContent);
+                lastContent = redoStack.pop();
+                ignoreChanges = true;
+                editor.innerHTML = lastContent;
+                ignoreChanges = false;
+                triggerInput();
+            }
+        }
 
         function updateStatus(text) {
             statusText.textContent = text;
         }
 
-        // Auto-focus on editor
         window.addEventListener('load', () => {
             editor.focus();
         });
