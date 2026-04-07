@@ -10,4 +10,4 @@ RUN sed -i 's/\r$//' mvnw \
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "java -Dserver.port=${PORT:-8080} -jar target/persistence-service-0.0.1-SNAPSHOT.jar"]
+CMD ["sh", "-c", "java -Dserver.port=${PORT:-8080} -jar target/api-gateway-0.0.1-SNAPSHOT.jar"]
