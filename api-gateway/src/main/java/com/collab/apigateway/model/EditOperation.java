@@ -10,6 +10,9 @@ public class EditOperation {
     private String text;
     private String content;     // Legacy full-content updates
     private String title;
+    private String editorMode;
+    private String fileName;
+    private String language;
     private String clientId;
     private String operationId;
     private int length;

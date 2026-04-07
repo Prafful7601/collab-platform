@@ -59,7 +59,14 @@ public class DocumentController {
     @PutMapping("/{id}")
     public ResponseEntity<Document> updateDocument(@PathVariable String id, @RequestBody Document document) {
 
-        Document updatedDocument = documentStateService.updateDocument(id, document.getTitle(), document.getContent());
+        Document updatedDocument = documentStateService.updateDocument(
+                id,
+                document.getTitle(),
+                document.getContent(),
+                document.getEditorMode(),
+                document.getFileName(),
+                document.getLanguage()
+        );
 
         return ResponseEntity.ok(updatedDocument);
     }
