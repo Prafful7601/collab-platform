@@ -1,6 +1,6 @@
 # Collab Platform
 
-A real-time collaborative editing platform built with Spring Boot, WebSockets, Redis-backed state caching, Kafka event publishing, and a clean browser UI for shared documents.
+A real-time collaborative workspace built with Spring Boot, WebSockets, Redis-backed state caching, Kafka event publishing, and a browser UI for both shared documents and code-style editing.
 
 This project is already beyond a toy demo. It supports live multi-user editing, per-document collaboration rooms, version-aware edit application, saved documents, recent document discovery, and a dedicated persistence service behind the gateway.
 
@@ -13,17 +13,19 @@ This project is already beyond a toy demo. It supports live multi-user editing, 
 - Caches document state in Redis when available, with in-memory fallback
 - Publishes edit events to Kafka when the broker is running
 - Shows recent documents and document stats in the UI
+- Supports both document mode and code mode in the same collaboration flow
+- Persists editor metadata such as editor mode, file name, and language
 
 ## Current Product Shape
 
-Right now this is a docs-first collaboration app. The frontend is focused on writing and shared drafting, while the backend is structured more like a platform that can grow into multiple collaborative surfaces.
+Right now this is a collaborative workspace with two editing surfaces. The frontend supports both writing-focused document editing and a code-oriented surface, while the backend is structured to keep those modes under the same shared document/session model.
 
 That makes this a strong base for:
 
 - collaborative docs
+- shared code snippets and pair-editing sessions
 - internal note-taking
 - lightweight team knowledge sharing
-- a future code editor mode
 
 ## Architecture
 
@@ -31,15 +33,17 @@ That makes this a strong base for:
 Browser UI
   -> HTTP /documents + static UI from api-gateway
   -> WebSocket /collab for live editing
+  -> document-mode and code-mode surfaces over the same shared content
 
 api-gateway
   -> keeps hot document state in memory + Redis
   -> applies and broadcasts edit operations
+  -> syncs title and editor metadata updates
   -> forwards document snapshots to persistence-service
   -> emits document edit events to Kafka
 
 persistence-service
-  -> stores document snapshots in a database
+  -> stores document snapshots plus editor metadata in a database
   -> returns recent documents and saved state
 ```
 
@@ -77,14 +81,14 @@ persistence-service
 - Accepts live edit operations on `/collab`
 - Groups WebSocket clients by `docId`
 - Applies insert and delete operations server-side
-- Sends presence, snapshot, and operation events back to connected clients
+- Sends presence, snapshot, metadata, and operation events back to connected clients
 - Sanitizes legacy full-content updates before saving
 
 ### Persistence Service
 
 - Stores document snapshots independently from the live editing layer
 - Returns recent documents ordered by update time
-- Persists title, content, version, created time, and updated time
+- Persists title, content, editor mode, file name, language, version, created time, and updated time
 
 ### State Handling
 
@@ -95,9 +99,13 @@ persistence-service
 ## Frontend Features
 
 - Calm, polished writing interface
+- code-style editing surface with line numbers
+- shared workspace mode switch between `Document` and `Code`
+- per-document file name and language metadata
 - Shareable document links
 - live connection and sync status
 - word and character counts
+- line count in code mode
 - version and queue visibility
 - recent document list
 - new document creation
@@ -174,6 +182,9 @@ Example create request:
 {
   "title": "Team Notes",
   "content": "",
+  "editorMode": "doc",
+  "fileName": "notes.md",
+  "language": "markdown",
   "version": 0
 }
 ```
@@ -191,6 +202,7 @@ Supported client message types today:
 - `insert`
 - `delete`
 - `title-update`
+- `metadata-update`
 - `update`
 - `replace`
 
@@ -199,6 +211,7 @@ The server responds with event payloads such as:
 - `presence`
 - `snapshot`
 - `title-update`
+- `metadata-update`
 - `operation`
 
 ## Security Notes
@@ -224,6 +237,7 @@ These are smoke-test style scripts, not a complete automated test suite.
 - solid direction for horizontal scaling
 - graceful fallback behavior when Redis or persistence is unavailable
 - practical recent-documents workflow
+- document and code surfaces already share one collaboration engine
 - UX that feels better than a typical raw demo
 
 ## What Would Make This App Better
@@ -257,38 +271,32 @@ These are smoke-test style scripts, not a complete automated test suite.
 - Add containerized local app startup for both Spring services
 - Add CI with integration tests for WebSocket, Redis, and Kafka flows
 
-## Strong Next Step: Add A Code Editor Mode
+## Code Mode Today
 
-Yes, this is a very good direction.
-
-Instead of making the product only "Google Docs-lite", turn it into a collaborative workspace with editor modes:
+The app already supports two workspace surfaces:
 
 - `Document mode` for rich writing and notes
 - `Code mode` for source files with monospace editor behavior
 
-The clean way to do this is not to hack code editing into the current textarea. Make the editor surface pluggable.
+Code mode currently includes:
 
-### Recommended approach
+- a code-oriented visual surface
+- line numbers
+- file name metadata
+- language selection
+- shared metadata persistence through the backend
+- the same live collaboration and recent-doc flow as document mode
 
-1. Keep the collaboration backend document-based for now.
-2. Add a `documentType` or `editorMode` field such as `doc` or `code`.
-3. Render different frontend editors based on that mode.
-4. Start with Monaco Editor for code mode.
-5. Keep the same document/session APIs, but add metadata like language, theme, and tab width.
+### What should come next
 
-### Why this is worth doing
+The current implementation is a strong first version, but the next level is to replace the styled textarea with a true code editor component.
 
-- expands the app from note-taking into dev collaboration
-- makes the project more unique
-- opens the door to pair programming, interview rooms, and collaborative coding exercises
-- gives the platform a clearer product story than "shared docs only"
-
-### Best first version of code mode
+### Best next upgrade for code mode
 
 - Monaco Editor in the UI
 - syntax highlighting
-- language selector
-- file name support
+- language-aware editing features
+- better indentation and keyboard behavior
 - read-only spectator mode
 - shared selection and cursor presence after the base mode is stable
 
@@ -299,6 +307,7 @@ The clean way to do this is not to hack code editing into the current textarea. 
 - no production deployment setup
 - no full automated integration test coverage
 - Postgres is provisioned in infra but not yet the default persistence backend
+- code mode uses a styled textarea today rather than Monaco or CodeMirror
 
 ## Roadmap
 
@@ -306,7 +315,7 @@ The clean way to do this is not to hack code editing into the current textarea. 
 - Add role-based sharing and authentication in the UI
 - Introduce workspaces and folders
 - Add collaborative comments and suggestion mode
-- Add code editor mode with Monaco
+- Upgrade code mode to Monaco
 - Add production deployment manifests and CI
 
 ## Why This Project Is Interesting
