@@ -213,7 +213,7 @@
         ];
 
         const clientId = crypto.randomUUID ? crypto.randomUUID() : `client-${Date.now()}`;
-        const httpOrigin = location.origin && location.origin.startsWith("http") ? location.origin : "http://localhost:8080";
+        const httpOrigin = "https://collab-backend.onrender.com";
 
         let socket = null;
         let documentId = "";
