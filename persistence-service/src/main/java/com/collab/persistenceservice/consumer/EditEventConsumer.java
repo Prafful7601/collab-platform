@@ -23,21 +23,36 @@ public class EditEventConsumer {
         try {
 
             JsonNode node = objectMapper.readTree(message);
+            JsonNode documentIdNode = node.get("documentId");
 
-            String docId = node.get("documentId").asText();
-            String text = node.get("text").asText();
+            if (documentIdNode == null || documentIdNode.isNull()) {
+                return;
+            }
+
+            String docId = documentIdNode.asText();
+            if (!node.hasNonNull("content")) {
+                return;
+            }
+
+            String text = node.get("content").asText("");
+            String title = node.hasNonNull("title") ? node.get("title").asText("Untitled document") : "Untitled document";
+            int version = node.hasNonNull("version") ? node.get("version").asInt(0) : 0;
+            long now = System.currentTimeMillis();
 
             DocumentSnapshot snapshot = repository.findById(docId)
                     .orElse(new DocumentSnapshot());
 
             snapshot.setDocumentId(docId);
+            snapshot.setTitle(title);
             snapshot.setContent(text);
-            snapshot.setUpdatedAt(System.currentTimeMillis());
+            snapshot.setVersion(version);
+            snapshot.setCreatedAt(snapshot.getCreatedAt() > 0 ? snapshot.getCreatedAt() : now);
+            snapshot.setUpdatedAt(now);
 
             repository.save(snapshot);
 
-        } catch (Exception e) {
-            e.printStackTrace();
+        } catch (Exception exception) {
+            exception.printStackTrace();
         }
     }
 }

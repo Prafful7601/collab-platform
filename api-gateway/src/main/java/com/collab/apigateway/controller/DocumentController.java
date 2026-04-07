@@ -1,38 +1,66 @@
 package com.collab.apigateway.controller;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
 import java.util.UUID;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.collab.apigateway.model.Document;
+import com.collab.apigateway.service.DocumentStateService;
 
 @RestController
 @RequestMapping("/documents")
+@CrossOrigin(origins = "*")
 public class DocumentController {
 
-    private Map<String, Document> documents = new HashMap<>();
+    private final DocumentStateService documentStateService;
+
+    public DocumentController(DocumentStateService documentStateService) {
+        this.documentStateService = documentStateService;
+    }
+
+    @GetMapping
+    public List<Document> listDocuments() {
+        return documentStateService.listDocuments();
+    }
 
     @PostMapping
-    public Document createDocument(@RequestBody Document doc) {
+    public ResponseEntity<Document> createDocument(@RequestBody(required = false) Document doc) {
 
-        String id = UUID.randomUUID().toString();
-        doc.setId(id);
+        Document document = doc != null ? doc : new Document();
+        String id = StringUtils.hasText(document.getId()) ? document.getId() : UUID.randomUUID().toString();
 
-        documents.put(id, doc);
+        document.setId(id);
 
-        return doc;
+        return ResponseEntity.ok(documentStateService.saveDocument(document));
     }
 
     @GetMapping("/{id}")
-    public Document getDocument(@PathVariable String id) {
+    public ResponseEntity<Document> getDocument(@PathVariable String id) {
 
-        return documents.get(id);
+        Document document = documentStateService.getDocument(id);
+
+        if (document == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(document);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Document> updateDocument(@PathVariable String id, @RequestBody Document document) {
+
+        Document updatedDocument = documentStateService.updateDocument(id, document.getTitle(), document.getContent());
+
+        return ResponseEntity.ok(updatedDocument);
     }
 }

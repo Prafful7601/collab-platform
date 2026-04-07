@@ -1,9 +1,9 @@
-package com.collab.apigateway.model;
+package com.collab.persistenceservice.dto;
 
 import lombok.Data;
 
 @Data
-public class Document {
+public class StoredDocument {
 
     private String id;
     private String title;
